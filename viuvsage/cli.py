@@ -1,4 +1,4 @@
-from commands import app
+from .commands import app
 
 def main():
     import sys
