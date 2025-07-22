@@ -108,10 +108,16 @@ def doctor():
     """
 
     print("[bold blue]Diagnostics are in progress... stay tuned![/bold blue]")
-    returnCode=subprocess.run(["conan","profile","detect"])
-    if returnCode.returncode!=0:
-        print("[bold blue]Installing Conan... stay tuned![/bold blue]")
-        subprocess.run(["pip","install","conan"])
+    if subprocess.run(["pip","install","conan"],capture_output=True).returncode!=0:
+        print("failed to install conan")
+    code=subprocess.run(["conan","profile","detect"],capture_output=True).returncode
+    if code==0 or code==1:
+        print("default conan profile created!")
+    else:
+        print("error while creating conan profile!")
+        return
+    conan_profile_path=subprocess.run(["conan","profile","path","default"],capture_output=True).stdout.strip()
+    modifyConanProfile(conan_profile_path)
 
 @app.command()
 def create():
@@ -148,7 +154,7 @@ def create():
     cmake_root = f"""#Auto Generated Root CMake file by Sage
 #Copyright(c) 2025 None.All rights reerved.
 cmake_minimum_required(VERSION 3.6...3.31)
-project({project_name} VERSION 0.1.0 LANGUAGES CXX)
+project({project_name} VERSION 0.1.0 LANGUAGES CXX C)
 include(cmake/config.cmake)
 #@add_find_package Warning: Do not remove this line
 
@@ -174,6 +180,9 @@ if(STATIC_LINK)
   endif()
 else()
   set(BUILD_SHARED_LIBS ON)
+  if(WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  endif()
 endif()
 set(COMPANY "None")
 string(TIMESTAMP CURRENT_YEAR "%Y")
@@ -332,10 +341,28 @@ def debug():
     buildType="Debug"
     global preset
     preset=debugPreset
-    if not os.path.isdir(f"build/{debugPreset}"):
-        req_path = f"packages/{packageFileName}"
-        if os.path.isfile(req_path):
-            subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={buildType}"])
-        else:
-            print(f"[bold red]Missing {req_path}[/bold red]")
+    req_path = f"packages/{packageFileName}"
+    if os.path.isfile(req_path):
+        subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={buildType}"])
+    else:
+        print(f"[bold red]Missing {req_path}[/bold red]")
+        return
     onCompile()
+
+
+def modifyConanProfile(conan_profile_path:str):
+    if not os.path.isfile(conan_profile_path):
+        print(f"{conan_profile_path} doesn't exist!")
+        return
+    file_data=""
+    with open(conan_profile_path,"r") as file:
+        file_data=file.readlines()
+    for index,line in enumerate(file_data):
+        if line.strip().startswith("compiler.cppstd"):
+            file_data[index]="compiler.cppstd=20\n"
+    file_data.append("&:compiler=clang\n")
+    
+    with open(conan_profile_path,"w") as file:
+        file.writelines(file_data)
+
+    print(file_data)
