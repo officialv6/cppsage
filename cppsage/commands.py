@@ -192,6 +192,7 @@ configure_file(res/config.h.in {project_name}config.h)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "Enabling secure coding features for Clang")
     add_compile_options(
+        -Xclang
         -Wall -Wextra -Wpedantic
         -Wshadow -Wold-style-cast
         -Wcast-align -Wnull-dereference
@@ -270,7 +271,7 @@ namespace Project {{
 
     for name, content in {
         ".clang-format": "BasedOnStyle: Google",
-        ".clangd": "CompileFlags:\n CompilationDatabase: build/default\n Add: [-Wall, -Wextra]",
+        ".clangd": "CompileFlags:\n CompilationDatabase: build/default\n",
         ".editorconfig": "root = true",
         ".gitignore": "build/\npackages/install/\n.vscode/",
     }.items():
