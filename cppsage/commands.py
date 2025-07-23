@@ -234,7 +234,7 @@ namespace Project {{
     {
       "name": "default",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build/",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "packages/install/conan_toolchain.cmake",
         "STATIC_LINK": false,
@@ -271,7 +271,7 @@ namespace Project {{
 
     for name, content in {
         ".clang-format": "BasedOnStyle: Google",
-        ".clangd": "CompileFlags:\n CompilationDatabase: build/default\n",
+        ".clangd": "CompileFlags:\n CompilationDatabase: build\n",
         ".editorconfig": "root = true",
         ".gitignore": "build/\npackages/install/\n.vscode/",
     }.items():
