@@ -270,7 +270,6 @@ namespace Project {{
 
     for name, content in {
         ".clang-format": "BasedOnStyle: Google",
-        ".clang-tidy": "Checks: '*'",
         ".clangd": "CompileFlags:\n CompilationDatabase: build/default\n Add: [-Wall, -Wextra]",
         ".editorconfig": "root = true",
         ".gitignore": "build/\npackages/install/\n.vscode/",
