@@ -19,9 +19,18 @@ def about():
     print("[bold cyan]Sage by Viuv Labs[/bold cyan]: A unified build and dependency system for C/C++")
     print("[faint white]Use '--help' to explore commands[/faint white]")
 
+def _change_directory(path: str):
+    if path:
+        try:
+            os.chdir(path)
+        except FileNotFoundError:
+            print(f"[bold red]Directory not found: {path}[/bold red]")
+            raise typer.Exit()
+
 @app.command()
-def compile():
+def compile(path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
     """Compile the project using the current preset and build directory."""
+    _change_directory(path)
     onCompile()
 
 def onCompile():
@@ -30,11 +39,8 @@ def onCompile():
         return
     
     build_dir = f"build/{preset}"
-    print(build_dir)
     if not os.path.isdir(build_dir):
-        if not os.path.isdir(f"packages/install"):
-            runInstall()
-
+        runInstall()
         result = subprocess.run(["cmake", "--preset", preset])
         if result.returncode != 0:
             print("[bold red]CMake configuration failed[/bold red]")
@@ -43,7 +49,7 @@ def onCompile():
     subprocess.run(["cmake", "--build", build_dir, "--parallel"])
 
 @app.command()
-def run(args: list[str]):
+def run(args: list[str], path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
     """
     Run one or more compiled executables from the build directory.
 
@@ -52,25 +58,26 @@ def run(args: list[str]):
         sage run main test_game
     Searches inside build/{preset}/ for matching executables.
     """
-    onRun()
+    _change_directory(path)
+    onRun(args)
 
-def onRun(args:list[str]=""):
+def onRun(args:list[str]=[]):
     if not args:
         print("[bold red]Specify at least one app to build/run[/bold red]")
         return
 
     for arg in args:
         path_direct = f"build/{preset}/{arg}{execulableExtention}"
-        path_nested = (f"{path_direct}".removesuffix(execulableExtention))+f"/{arg}{execulableExtention}"
+        path_nested = (f"build/{preset}/{arg}/{arg}{execulableExtention}")
         if os.path.isfile(path_direct):
             subprocess.run([path_direct])
         elif os.path.isfile(path_nested):
             subprocess.run([path_nested])
         else:
-            print(f"[bold red]Executable '{arg}' not found[/bold red]")
+            print(f"[bold red]Executable '{arg}' not found in {path_direct} or {path_nested}[/bold red]")
 
 @app.command()
-def build(args:list[str]):
+def build(args:list[str], path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
     """
     Build and Run one or more compiled executables from the build directory.
 
@@ -79,15 +86,18 @@ def build(args:list[str]):
         sage build main test_game
     Searches inside build/{preset}/ for matching executables.
     """
+    _change_directory(path)
     onCompile()
     onRun(args=args)
 
 @app.command()
 def install(
     package: str = typer.Option(None, "--package", "-p", help="Package name to install"),
-    version: str = typer.Option(None, "--version", "-v", help="Optional package version")
+    version: str = typer.Option(None, "--version", "-v", help="Optional package version"),
+    path: str = typer.Option(None, "--path", help="Path to the project directory.")
 ):
     """Install dependencies from requirements.txt or add new ones , sage install --help"""
+    _change_directory(path)
     runInstall(package,version)
 
 
@@ -106,8 +116,59 @@ def doctor():
     [💡] Future versions will include environment summary, version checks,
     and auto-fix suggestions for broken configs.
     """
+    tools = {
+        "cmake": {"version_cmd": ["cmake", "--version"], "install": {
+            "Windows": "winget install Kitware.CMake",
+            "Linux": "sudo apt-get install cmake",
+            "Darwin": "brew install cmake"
+        }},
+        "ninja": {"version_cmd": ["ninja", "--version"], "install": {
+            "Windows": "winget install Ninja-build.Ninja",
+            "Linux": "sudo apt-get install ninja-build",
+            "Darwin": "brew install ninja"
+        }},
+        "clang": {"version_cmd": ["clang", "--version"], "install": {
+            "Windows": "winget install LLVM.LLVM",
+            "Linux": "sudo apt-get install clang",
+            "Darwin": "brew install llvm"
+        }},
+        "conan": {"version_cmd": ["conan", "--version"], "install": {
+            "Windows": "pip install conan",
+            "Linux": "pip install conan",
+            "Darwin": "pip install conan"
+        }},
+    }
 
-    print("[bold blue]Diagnostics are in progress... stay tuned![/bold blue]")
+    if os.name == "nt":
+        tools["msvc"] = {"version_cmd": ["vswhere", "-latest", "-property", "displayName"], "install": {
+            "Windows": "Install Visual Studio Build Tools: https://aka.ms/vs/17/release/vs_BuildTools.exe"
+        }}
+
+    print("[bold blue]Running CppSage Doctor...[/bold blue]")
+    
+    os_map = {
+        "win32": "Windows",
+        "linux": "Linux",
+        "darwin": "Darwin"
+    }
+    current_os = os_map.get(sys.platform)
+
+    for tool, details in tools.items():
+        try:
+            result = subprocess.run(details["version_cmd"], capture_output=True, text=True, check=True, shell=True)
+            version = result.stdout.strip().splitlines()[0]
+            print(f"[green]V {tool} found: {version}[/green]")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print(f"[bold red]X {tool} not found.[/bold red]")
+            if current_os:
+                install_cmd = details["install"].get(current_os)
+                if install_cmd:
+                    print(f"  To install, run: [bold cyan]{install_cmd}[/bold cyan]")
+                else:
+                    print(f"  Installation instructions not available for {current_os}")
+            else:
+                print(f"  Installation instructions not available for your OS: {sys.platform}")
+
     if subprocess.run(["pip","install","conan"],capture_output=True).returncode!=0:
         print("failed to install conan")
     code=subprocess.run(["conan","profile","detect"],capture_output=True).returncode
@@ -222,6 +283,7 @@ namespace Project {{
 
     # Subproject CMakeLists.txt
     subproject_cmake = f"""add_executable({project_name} src/main.{ext}) # Add your Source Files here
+#@add_target_link_libraries Warning: Do not remove this line
 """
     (root / project_name / "CMakeLists.txt").write_text(subproject_cmake)
 
@@ -283,16 +345,39 @@ namespace Project {{
 
 
 
+import re
+
+def _process_conan_output(output: str):
+    """Parses the output of a conan install command to find package information."""
+    find_packages = []
+    target_link_libraries = []
+    
+    find_package_regex = re.compile(r"find_package\(([^)]+)\)")
+    target_link_regex = re.compile(r"target_link_libraries\(\.\.\. ([^)]+)\)")
+
+    for line in output.splitlines():
+        find_match = find_package_regex.search(line)
+        if find_match:
+            find_packages.append(f"find_package({find_match.group(1)})")
+
+        target_match = target_link_regex.search(line)
+        if target_match:
+            target_link_libraries.append(target_match.group(1))
+            
+    return find_packages, target_link_libraries
+
 def runInstall(package:str=None,version:str=None):
     req_path = f"packages/{packageFileName}"
 
     if not package:
         if os.path.isfile(req_path):
+            print("[bold yellow]Installing dependencies from requirements.txt[/bold yellow]")
             subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={buildType}"])
             return
         else:
-            print(f"[bold red]Missing {req_path}[/bold red]")
+            print("[bold red]Missing requirements.txt[/bold red]")
         return
+    
     req_dir=os.path.dirname(req_path)
     os.makedirs(req_dir,exist_ok=True)
 
@@ -320,23 +405,104 @@ def runInstall(package:str=None,version:str=None):
         with open(req_path, "r") as f:
             lines = f.readlines()
 
-        if full_package + "\n" in lines:
+        if full_package + "\n" not in lines:
+            for i, line in enumerate(lines):
+                if line.strip() == "[requires]":
+                    lines.insert(i + 1, full_package + "\n")
+                    break
+            with open(req_path, "w") as f:
+                f.writelines(lines)
+        else:
             print(f"[bold yellow]{full_package} is already listed[/bold yellow]")
-            return
 
-        for i, line in enumerate(lines):
-            if line.strip() == "[requires]":
-                lines.insert(i + 1, full_package + "\n")
+
+    result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing"], capture_output=True, text=True)
+    if result.returncode != 0:
+        print("[bold red]Conan installation failed.[/bold red]")
+        print(result.stderr)
+        return
+
+    # --- Auto-update CMakeLists.txt from conan output ---
+    project_name = ""
+    with open("CMakeLists.txt", "r") as f:
+        for line in f:
+            if line.strip().startswith("project("):
+                project_name = line.strip().split("(")[1].split()[0]
                 break
+    
+    if not project_name:
+        print("[bold red]Could not find project name in CMakeLists.txt[/bold red]")
+        return
 
-        with open(req_path, "w") as f:
-            f.writelines(lines)
+    find_packages, target_link_libraries = _process_conan_output(result.stderr)
+    
+    if find_packages:
+        with open("CMakeLists.txt", "r+") as f:
+            content = f.read()
+            f.seek(0)
+            lines = content.splitlines()
+            # Find the placeholder and insert the new packages
+            for i, line in enumerate(lines):
+                if "#@add_find_package" in line:
+                    for pkg in find_packages:
+                        if pkg not in content:
+                            lines.insert(i + 1, pkg)
+                    break
+            f.write('\n'.join(lines))
 
-    subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing"])
 
+    if target_link_libraries:
+        subproject_cmake_path = f"{project_name}/CMakeLists.txt"
+        if os.path.isfile(subproject_cmake_path):
+            with open(subproject_cmake_path, "r+") as f:
+                content = f.read()
+                f.seek(0)
+                lines = content.splitlines()
+                for i, line in enumerate(lines):
+                    if "#@add_target_link_libraries" in line:
+                        for lib in target_link_libraries:
+                            link_str = f"target_link_libraries({project_name} PRIVATE {lib})"
+                            if link_str not in content:
+                                lines.insert(i + 1, link_str)
+                        break
+                f.write('\n'.join(lines))
+        else:
+            print(f"[bold red]Subproject CMakeLists.txt not found at {subproject_cmake_path}[/bold red]")
+
+def onCompile():
+    if not os.path.isfile("CMakeLists.txt"):
+        print("[bold red]Missing CMakeLists.txt[/bold red]")
+        return
+    
+    build_dir = f"build"
+    if not os.path.isdir(build_dir):
+        runInstall()
+        result = subprocess.run(["cmake", "--preset", preset])
+        if result.returncode != 0:
+            print("[bold red]CMake configuration failed[/bold red]")
+            return
+    
+    subprocess.run(["cmake", "--build", build_dir, "--parallel"])
+
+def onRun(args:list[str]=[]):
+    if not args:
+        print("[bold red]Specify at least one app to build/run[/bold red]")
+        return
+
+    for arg in args:
+        path_direct = f"build/{arg}{execulableExtention}"
+        path_nested = (f"build/{arg}/{arg}{execulableExtention}")
+        if os.path.isfile(path_direct):
+            subprocess.run([path_direct])
+        elif os.path.isfile(path_nested):
+            subprocess.run([path_nested])
+        else:
+            print(f"[bold red]Executable '{arg}' not found in {path_direct} or {path_nested}[/bold red]")
 
 @app.command()
-def debug():
+def debug(path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
+    """Run the debug build of the project."""
+    _change_directory(path)
     global buildType
     buildType="Debug"
     global preset
@@ -354,15 +520,38 @@ def modifyConanProfile(conan_profile_path:str):
     if not os.path.isfile(conan_profile_path):
         print(f"{conan_profile_path} doesn't exist!")
         return
-    file_data=""
-    with open(conan_profile_path,"r") as file:
-        file_data=file.readlines()
-    for index,line in enumerate(file_data):
-        if line.strip().startswith("compiler.cppstd"):
-            file_data[index]="compiler.cppstd=20\n"
-    file_data.append("&:compiler=clang\n")
-    
-    with open(conan_profile_path,"w") as file:
-        file.writelines(file_data)
+    with open(conan_profile_path, "r") as file:
+        file_data = file.readlines()
 
-    print(file_data)
+    # Set compiler.cppstd to 20
+    found_cppstd = False
+    for index, line in enumerate(file_data):
+        if line.strip().startswith("compiler.cppstd"):
+            file_data[index] = "compiler.cppstd=20\n"
+            found_cppstd = True
+            break
+    if not found_cppstd:
+        file_data.append("compiler.cppstd=20\n")
+
+    # Add &:compiler=clang if not present
+    found_compiler = False
+    for line in file_data:
+        if line.strip() == "&:compiler=clang":
+            found_compiler = True
+            break
+    if not found_compiler:
+        file_data.append("&:compiler=clang\n")
+
+    with open(conan_profile_path, "w") as file:
+        file.writelines(file_data)
+    
+def processConanLogAndFindPackageStr(result:str):
+    find_packages=[]
+    target_link:str=""
+    for line in result.splitlines():
+        if line.strip().find("find_package"):
+            find_packages.append(line.strip())
+        if line.strip().find("target_link"):
+            target_link=line.strip()
+
+    return [find_packages,target_link]
