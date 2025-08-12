@@ -2,10 +2,10 @@
 
 # Sage: The Unified C/C++ Orchestrator
 
-![Sage Logo](https://raw.githubusercontent.com/viuvlabs/sage/main/docs/logo.png)
+![Sage Logo](https://raw.githubusercontent.com/Version.6/sage/main/docs/logo.png)
 ---
 
-**Sage by [viuvlabs](https://github.com/viuvlabs) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
+**Sage by [Version.6](https://github.com/Version.6) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
 
 ---
 
@@ -56,11 +56,11 @@ Sage aims to provide a comprehensive set of features for modern C/C++ developmen
 
 For more in-depth information, detailed usage guides, and advanced configurations, please refer to our official documentation:
 
-[https://docs.viuvlabs.com/sage](https://www.google.com/search?q=https://docs.viuvlabs.com/sage)
+[https://docs.Version.6.com/sage](https://www.google.com/search?q=https://docs.Version.6.com/sage)
 
 ## 🛠️ Project Structure
 
-The `viuvlabs/sage` repository contains:
+The `Version.6/sage` repository contains:
 
 ```
 .
@@ -87,7 +87,7 @@ Please refer to our [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTI
 
 ## 🐞 Reporting Issues
 
-Found a bug or have a feature request? Please open an issue on our [GitHub Issues page](https://www.google.com/search?q=https://github.com/viuvlabs/sage/issues).
+Found a bug or have a feature request? Please open an issue on our [GitHub Issues page](https://www.google.com/search?q=https://github.com/Version.6/sage/issues).
 
 ## 📄 License
 
@@ -98,11 +98,11 @@ Sage is open-source software licensed under the [MIT License](https://www.google
 ## 📞 Contact
 
 For questions, support, or general inquiries, please reach out to us:
-  * **GitHub Issues:** [https://github.com/viuvlabs/sage/issues](https://www.google.com/search?q=https://github.com/viuvlabs/sage/issues)
+  * **GitHub Issues:** [https://github.com/Version.6/sage/issues](https://www.google.com/search?q=https://github.com/Version.6/sage/issues)
 
 -----
 
-Made with ❤️ by the team at [viuvlabs](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/viuvlabs).
+Made with ❤️ by the team at [Version.6](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/Version.6).
 
 ```
 ```
