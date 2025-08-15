@@ -1,6 +1,6 @@
 [project]
 name = "cppsage"
-version = "0.3.1"
+version = "0.3.2"
 description = "Sage: A Unified Project and Package Management System for C/C++ by Version.6"
 authors = [
   {name = "Vishal Ahirwar", email = "cvxxcv0091@gmail.com"}

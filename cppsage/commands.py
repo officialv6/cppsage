@@ -96,10 +96,10 @@ def install(
     package: str = Option(None, "--package", "-p", help="Package name to install"),
     version: str = Option(None, "--version", "-v", help="Optional package version"),
     path: str = Option(None, "--path", help="Path to the project directory."),
-    build_type: str = Option("release", "--build-type", "-b", help="Build type for conan install (debug or release)")
+    build_type: str = Option("Release", "--build-type", "-b", help="Build type for conan install (Debug or Release)")
 ):
     """Install dependencies from requirements.txt or add new ones , sage install --help"""
-    if build_type not in ["debug", "release"]:
+    if build_type not in ["Debug", "Release"]:
         print("[bold red]Invalid build type. Must be 'debug' or 'release'[/bold red]")
         raise typer.Exit()
     _change_directory(path)

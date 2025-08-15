@@ -96,11 +96,11 @@ Sage is open-source software licensed under the [MIT License](https://www.google
 ## 📞 Contact
 
 For questions, support, or general inquiries, please reach out to us:
-  * **GitHub Issues:** [https://github.com/Version.6/sage/issues](https://www.google.com/search?q=https://github.com/Version.6/sage/issues)
+  * **GitHub Issues:** [https://github.com/Version.6/sage/issues](https://www.google.com/search?q=https://github.com/versionvi/sage/issues)
 
 -----
 
-Made with ❤️ by the team at [Version.6](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/Version.6).
+Made with ❤️ by the team at [Version.6](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/versionvi).
 
 ```
 ```
