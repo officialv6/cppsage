@@ -408,7 +408,7 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
                 print(f"[bold yellow]{full_package} is already listed[/bold yellow]")
 
 
-        result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing"], capture_output=True, text=True)
+        result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={build_type}"], capture_output=True, text=True)
         print(result.stdout)
         print(result.stderr)
         if result.returncode != 0:
