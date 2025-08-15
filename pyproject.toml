@@ -1,7 +1,7 @@
 [project]
 name = "cppsage"
-version = "0.2.4"
-description = "Sage: A Unified Project and Package Management System for C/C++ by viuvlabs"
+version = "0.3.1"
+description = "Sage: A Unified Project and Package Management System for C/C++ by Version.6"
 authors = [
   {name = "Vishal Ahirwar", email = "cvxxcv0091@gmail.com"}
 ]
@@ -10,8 +10,11 @@ requires-python = ">=3.7"
 license = {text = "MIT"}
 dependencies = ["typer", "rich", "questionary"]
 
+[tool.setuptools]
+packages = ["cppsage"]
+
 [project.urls]
-Homepage = "https://github.com/viuvlabs/sage"
+Homepage = "https://github.com/versionvi/cppsage"
 
 [project.scripts]
 sage = "cppsage.cli:main"

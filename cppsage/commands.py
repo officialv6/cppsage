@@ -5,6 +5,7 @@ import os
 import sys
 import subprocess
 from typer import Option
+import questionary
 
 packageFileName = "requirements.txt"
 preset = "clang-msvc" if os.name == "nt" else "clang-posix"
@@ -17,7 +18,7 @@ buildType="Release"
 def about():
     """Show information about the Sage project and CLI."""
 
-    print("[bold cyan]Sage by Viuv Labs[/bold cyan]: A unified build and dependency system for C/C++")
+    print("[bold cyan]Sage by Version6[/bold cyan]: A unified build and dependency system for C/C++")
     print("[faint white]Use '--help' to explore commands[/faint white]")
 
 def _change_directory(path: str):
@@ -194,19 +195,24 @@ def create():
     and a minimal entry point with Conan-ready setup.
     """
 
-    project_name = typer.prompt("Enter project name").strip()
-    lang = typer.prompt("Choose language (C/C++)").strip().lower()
-    project_type = typer.prompt("Choose project type (lib or exe)").strip().lower()
-
+    project_name = questionary.text("Enter project name:").ask()
     if not project_name:
         print("[bold red]Project name cannot be empty[/bold red]")
         raise typer.Exit()
-    if lang not in ["c", "c++"]:
-        print("[bold red]Invalid language. Must be 'C' or 'C++'[/bold red]")
+
+    lang = questionary.select(
+        "Choose language:",
+        choices=["c", "c++"],
+    ).ask()
+
+    project_type = questionary.select(
+        "Choose project type:",
+        choices=["lib", "exe"],
+    ).ask()
+
+    if not lang or not project_type:
         raise typer.Exit()
-    if project_type not in ["lib", "exe"]:
-        print("[bold red]Invalid project type. Must be 'lib' or 'exe'[/bold red]")
-        raise typer.Exit()
+
 
     ext = "c" if lang == "c" else "cpp"
     root = Path(project_name)
@@ -214,7 +220,7 @@ def create():
 
     # Create directory structure
     for folder in [
-         "cmake", "config",
+         "config",
         f"{project_name}/src", f"{project_name}/include", "packages"
     ]:
         (root / folder).mkdir(parents=True, exist_ok=True)
@@ -239,7 +245,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STATIC_LINK "Enable static linking" ON)
-option(ENABLE_TESTS "GTests" OFF)
 if(STATIC_LINK)
   set(BUILD_SHARED_LIBS OFF)
   if (WIN32)
@@ -299,14 +304,14 @@ namespace Project {{
         subproject_cmake = f"""add_library({project_name} src/{project_name}.{ext}) # Add your Source Files here
 #@add_target_link_libraries Warning: Do not remove this line
 """
-        (root / project_name / f"src/{project_name}.{ext}").write_text(f'#include "{project_name}.h"\n\nvoid {project_name}() {{}}')
+        (root / project_name / f"src/{project_name}.{ext}").write_text(f'#include "../include/{project_name}.h"\n\nvoid {project_name}() {{}}')
         (root / project_name / "include" / f"{project_name}.h").write_text(f"#ifndef {project_name.upper()}_H\n#define {project_name.upper()}_H\n\nvoid {project_name}();\n\n#endif // {project_name.upper()}_H")
 
     (root / project_name / "CMakeLists.txt").write_text(subproject_cmake)
 
 
     # Other essential files
-    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${sourceDir}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"STATIC_LINK\": false,\n        \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"clang-posix-debug\",\n    \"inherits\":\"clang-posix\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"clang-msvc\",\n      \"inherits\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"clang-msvc-debug\",\n      \"inherits\":\"clang-msvc\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
+    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${sourceDir}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"STATIC_LINK\": false,\n        \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"clang-posix-debug\",\n    \"inherits\": \"clang-posix\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"clang-msvc\",\n      \"inherits\": \"clang-posix\",\n\"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"clang-msvc-debug\",\n      \"inherits\": \"clang-msvc\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
     (root / "packages/requirements.txt").write_text("[requires]\n[generators]\nCMakeDeps\nCMakeToolchain\n")
     
 
@@ -319,7 +324,6 @@ namespace Project {{
         (root / name).write_text(content)
 
     print(f"[bold cyan]{project_name} has been created successfully![/bold cyan]")
-
 
 
 
@@ -354,7 +358,9 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
     if not package:
         if os.path.isfile(req_path):
             print("[bold yellow]Installing dependencies from requirements.txt[/bold yellow]")
-            result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={build_type}"], capture_output=True, text=True)
+            result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing",
+                                   "-c","tools.cmake.cmaketoolchain:generator=Ninja",
+                                   "-s",f"build_type={build_type}"], capture_output=True, text=True)
             print(result.stdout)
             print(result.stderr)
             if result.returncode != 0:
@@ -474,14 +480,20 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
                         f.write('\n'.join(lines))
 
 @app.command()
-def add(
-    subproject_name: str = Option(..., "--name", "-n", help="Name of the subproject to add."),
-    project_type: str = Option(..., "--type", "-t", help="Type of the subproject (lib or exe).",)
-):
+def add():
     """Add a new subproject to the current project."""
-    if project_type not in ["lib", "exe"]:
-        print("[bold red]Invalid project type. Must be 'lib' or 'exe'[/bold red]")
+    subproject_name = questionary.text("Enter subproject name:").ask()
+    if not subproject_name:
+        print("[bold red]Subproject name cannot be empty[/bold red]")
         raise typer.Exit()
+
+    project_type = questionary.select(
+        "Choose project type:",
+        choices=["lib", "exe"],
+    ).ask()
+    if not project_type:
+        raise typer.Exit()
+
     print(f"[bold green]Adding subproject: {subproject_name}[/bold green]")
 
     # Create directory structure
@@ -500,7 +512,7 @@ def add(
         subproject_cmake = f"""add_library({subproject_name} src/{subproject_name}.cpp) # Add your Source Files here
 #@add_target_link_libraries Warning: Do not remove this line
 """
-        (Path(subproject_name) / f"src/{subproject_name}.cpp").write_text(f"#include \"{subproject_name}.h\"\n\nvoid {subproject_name}() {{}}")
+        (Path(subproject_name) / f"src/{subproject_name}.cpp").write_text(f'#include "../include/{subproject_name}.h"\n\nvoid {subproject_name}() {{}}')
         (Path(subproject_name) / "include" / f"{subproject_name}.h").write_text(f"#ifndef {subproject_name.upper()}_H\n#define {subproject_name.upper()}_H\n\nvoid {subproject_name}();\n\n#endif // {subproject_name.upper()}_H")
 
     (Path(subproject_name) / "CMakeLists.txt").write_text(subproject_cmake)
@@ -517,6 +529,7 @@ def add(
         f.write('\n'.join(lines))
 
     print(f"[bold cyan]Subproject '{subproject_name}' has been added successfully![/bold cyan]")
+
 
 
 def onCompile():
@@ -558,7 +571,9 @@ def debug(path: str = typer.Option(None, "--path", "-p", help="Path to the proje
     preset=debugPreset
     req_path = f"packages/{packageFileName}"
     if os.path.isfile(req_path):
-        subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={buildType}"])
+        subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing",
+                       "-c","tools.cmake.cmaketoolchain:generator=Ninja",
+                       "-s",f"build_type={buildType}"])
     else:
         print(f"[bold red]Missing {req_path}[/bold red]")
         return
