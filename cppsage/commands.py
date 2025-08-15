@@ -4,6 +4,7 @@ from rich import print
 import os
 import sys
 import subprocess
+from typer import Option
 
 packageFileName = "requirements.txt"
 preset = "windows" if os.name == "nt" else "default"
@@ -49,7 +50,7 @@ def onCompile():
     subprocess.run(["cmake", "--build", build_dir, "--parallel"])
 
 @app.command()
-def run(args: list[str], path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
+def run(args: list[str] = typer.Argument(None), path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
     """
     Run one or more compiled executables from the build directory.
 
@@ -63,12 +64,11 @@ def run(args: list[str], path: str = typer.Option(None, "--path", "-p", help="Pa
 
 def onRun(args:list[str]=[]):
     if not args:
-        print("[bold red]Specify at least one app to build/run[/bold red]")
-        return
+        args = [os.path.basename(os.getcwd())]
 
     for arg in args:
-        path_direct = f"build/{preset}/{arg}{execulableExtention}"
-        path_nested = (f"build/{preset}/{arg}/{arg}{execulableExtention}")
+        path_direct = f"build/{arg}{execulableExtention}"
+        path_nested = (f"build/{arg}/{arg}{execulableExtention}")
         if os.path.isfile(path_direct):
             subprocess.run([path_direct])
         elif os.path.isfile(path_nested):
@@ -77,7 +77,7 @@ def onRun(args:list[str]=[]):
             print(f"[bold red]Executable '{arg}' not found in {path_direct} or {path_nested}[/bold red]")
 
 @app.command()
-def build(args:list[str], path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
+def build(args: list[str] = typer.Argument(None), path: str = typer.Option(None, "--path", "-p", help="Path to the project directory.")):
     """
     Build and Run one or more compiled executables from the build directory.
 
@@ -92,13 +92,17 @@ def build(args:list[str], path: str = typer.Option(None, "--path", "-p", help="P
 
 @app.command()
 def install(
-    package: str = typer.Option(None, "--package", "-p", help="Package name to install"),
-    version: str = typer.Option(None, "--version", "-v", help="Optional package version"),
-    path: str = typer.Option(None, "--path", help="Path to the project directory.")
+    package: str = Option(None, "--package", "-p", help="Package name to install"),
+    version: str = Option(None, "--version", "-v", help="Optional package version"),
+    path: str = Option(None, "--path", help="Path to the project directory."),
+    build_type: str = Option("release", "--build-type", "-b", help="Build type for conan install (debug or release)")
 ):
     """Install dependencies from requirements.txt or add new ones , sage install --help"""
+    if build_type not in ["debug", "release"]:
+        print("[bold red]Invalid build type. Must be 'debug' or 'release'[/bold red]")
+        raise typer.Exit()
     _change_directory(path)
-    runInstall(package,version)
+    runInstall(package,version,build_type)
 
 
 @app.command()
@@ -192,12 +196,16 @@ def create():
 
     project_name = typer.prompt("Enter project name").strip()
     lang = typer.prompt("Choose language (C/C++)").strip().lower()
+    project_type = typer.prompt("Choose project type (lib or exe)").strip().lower()
 
     if not project_name:
         print("[bold red]Project name cannot be empty[/bold red]")
         raise typer.Exit()
     if lang not in ["c", "c++"]:
         print("[bold red]Invalid language. Must be 'C' or 'C++'[/bold red]")
+        raise typer.Exit()
+    if project_type not in ["lib", "exe"]:
+        print("[bold red]Invalid project type. Must be 'lib' or 'exe'[/bold red]")
         raise typer.Exit()
 
     ext = "c" if lang == "c" else "cpp"
@@ -225,7 +233,7 @@ add_subdirectory({project_name})
     (root / "CMakeLists.txt").write_text(cmake_root)
 
     # config.cmake
-    config_cmake = f"""#Auto Generated Root CMake file by Sage
+    config_cmake = rf"""#Auto Generated Root CMake file by Sage
 #None
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -235,14 +243,14 @@ option(ENABLE_TESTS "GTests" OFF)
 if(STATIC_LINK)
   set(BUILD_SHARED_LIBS OFF)
   if (WIN32)
-      set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+      set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<\<CONFIG:Debug>:Debug>")
   else()
       set(CMAKE_EXE_LINKER_FLAGS "${{CMAKE_EXE_LINKER_FLAGS}} -static")
   endif()
 else()
   set(BUILD_SHARED_LIBS ON)
   if(WIN32)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<\<CONFIG:Debug>:Debug>DLL")
   endif()
 endif()
 set(COMPANY "None")
@@ -268,7 +276,7 @@ endif()
     (root / "cmake/config.cmake").write_text(config_cmake)
 
     # res/config.h.in
-    config_h = f"""#ifndef __{project_name}__
+    config_h = rf"""#ifndef __{project_name}__
     #define __{project_name}__
 #include <string_view>
 namespace Project {{
@@ -282,54 +290,25 @@ namespace Project {{
     (root / "res/config.h.in").write_text(config_h)
 
     # Subproject CMakeLists.txt
-    subproject_cmake = f"""add_executable({project_name} src/main.{ext}) # Add your Source Files here
+    if project_type == "exe":
+        subproject_cmake = f"""add_executable({project_name} src/main.{ext}) # Add your Source Files here
 #@add_target_link_libraries Warning: Do not remove this line
 """
+        (root / project_name / f"src/main.{ext}").write_text("int main() {\n    return 0;\n}")
+    else:
+        subproject_cmake = f"""add_library({project_name} src/{project_name}.{ext}) # Add your Source Files here
+#@add_target_link_libraries Warning: Do not remove this line
+"""
+        (root / project_name / f"src/{project_name}.{ext}").write_text(f'#include "{project_name}.h"\n\nvoid {project_name}() {{}}')
+        (root / project_name / "include" / f"{project_name}.h").write_text(f"#ifndef {project_name.upper()}_H\n#define {project_name.upper()}_H\n\nvoid {project_name}();\n\n#endif // {project_name.upper()}_H")
+
     (root / project_name / "CMakeLists.txt").write_text(subproject_cmake)
 
-    # Other essential files
-    (root / "CMakePresets.json").write_text("""
 
-{
-  "version": 2,
-  "configurePresets": [
-    {
-      "name": "default",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "packages/install/conan_toolchain.cmake",
-        "STATIC_LINK": false,
-        "CMAKE_BUILD_TYPE":"Release",
-        "CMAKE_CXX_COMPILER":"clang++",
-        "CMAKE_C_COMPILER":"clang"
-      }
-    },
-    {"name": "debug",
-    "inherits":"default",
-    "cacheVariables": {
-      "CMAKE_BUILD_TYPE":"Debug"
-    }
-    },
-    {
-      "name": "windows",
-      "inherits": "default",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER":"clang-cl",
-        "CMAKE_C_COMPILER":"clang-cl"
-      }
-    },
-    {
-      "name": "debug-windows",
-      "inherits":"windows",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE":"Debug"
-      }
-    }
-  ]
-}""")
+    # Other essential files
+    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"default\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${{sourceDir}}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"STATIC_LINK\": false,\n        \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"debug\",\n    \"inherits\":\"default\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"windows\",\n      \"inherits\": \"default\",\n      \"generator\": \"Ninja\",\n      \"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"debug-windows\",\n      \"inherits\":\"windows\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
     (root / "packages/requirements.txt").write_text("[requires]\n[generators]\nCMakeDeps\nCMakeToolchain\n")
-    (root / project_name / f"src/main.{ext}").write_text("int main() {\n    return 0;\n}")
+    
 
     for name, content in {
         ".clang-format": "BasedOnStyle: Google",
@@ -340,6 +319,8 @@ namespace Project {{
         (root / name).write_text(content)
 
     print(f"[bold cyan]{project_name} has been created successfully![/bold cyan]")
+
+
 
 
 
@@ -366,13 +347,13 @@ def _process_conan_output(output: str):
             
     return find_packages, target_link_libraries
 
-def runInstall(package:str=None,version:str=None):
+def runInstall(package:str=None,version:str=None,build_type:str="Release"):
     req_path = f"packages/{packageFileName}"
 
     if not package:
         if os.path.isfile(req_path):
             print("[bold yellow]Installing dependencies from requirements.txt[/bold yellow]")
-            subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={buildType}"])
+            subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={build_type}"], check=True)
             return
         else:
             print("[bold red]Missing requirements.txt[/bold red]")
@@ -416,11 +397,13 @@ def runInstall(package:str=None,version:str=None):
             print(f"[bold yellow]{full_package} is already listed[/bold yellow]")
 
 
-    result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing"], capture_output=True, text=True)
+    result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing"], check=True)
     if result.returncode != 0:
         print("[bold red]Conan installation failed.[/bold red]")
         print(result.stderr)
         return
+
+
 
     # --- Auto-update CMakeLists.txt from conan output ---
     project_name = ""
@@ -469,6 +452,52 @@ def runInstall(package:str=None,version:str=None):
         else:
             print(f"[bold red]Subproject CMakeLists.txt not found at {subproject_cmake_path}[/bold red]")
 
+@app.command()
+def add(
+    subproject_name: str = Option(..., "--name", "-n", help="Name of the subproject to add."),
+    project_type: str = Option(..., "--type", "-t", help="Type of the subproject (lib or exe).",)
+):
+    """Add a new subproject to the current project."""
+    if project_type not in ["lib", "exe"]:
+        print("[bold red]Invalid project type. Must be 'lib' or 'exe'[/bold red]")
+        raise typer.Exit()
+    print(f"[bold green]Adding subproject: {subproject_name}[/bold green]")
+
+    # Create directory structure
+    for folder in [
+        f"{subproject_name}/src", f"{subproject_name}/include"
+    ]:
+        Path(folder).mkdir(parents=True, exist_ok=True)
+
+    # Subproject CMakeLists.txt
+    if project_type == "exe":
+        subproject_cmake = f"""add_executable({subproject_name} src/main.cpp) # Add your Source Files here
+#@add_target_link_libraries Warning: Do not remove this line
+"""
+        (Path(subproject_name) / "src/main.cpp").write_text("int main() {\n    return 0;\n}")
+    else:
+        subproject_cmake = f"""add_library({subproject_name} src/{subproject_name}.cpp) # Add your Source Files here
+#@add_target_link_libraries Warning: Do not remove this line
+"""
+        (Path(subproject_name) / f"src/{subproject_name}.cpp").write_text(f"#include \"{subproject_name}.h\"\n\nvoid {subproject_name}() {{}}")
+        (Path(subproject_name) / "include" / f"{subproject_name}.h").write_text(f"#ifndef {subproject_name.upper()}_H\n#define {subproject_name.upper()}_H\n\nvoid {subproject_name}();\n\n#endif // {subproject_name.upper()}_H")
+
+    (Path(subproject_name) / "CMakeLists.txt").write_text(subproject_cmake)
+
+    # Add subdirectory to root CMakeLists.txt
+    with open("CMakeLists.txt", "r+") as f:
+        content = f.read()
+        f.seek(0)
+        lines = content.splitlines()
+        for i, line in enumerate(lines):
+            if "#@add_subproject" in line:
+                lines.insert(i + 1, f"add_subdirectory({subproject_name})")
+                break
+        f.write('\n'.join(lines))
+
+    print(f"[bold cyan]Subproject '{subproject_name}' has been added successfully![/bold cyan]")
+
+
 def onCompile():
     if not os.path.isfile("CMakeLists.txt"):
         print("[bold red]Missing CMakeLists.txt[/bold red]")
@@ -486,8 +515,7 @@ def onCompile():
 
 def onRun(args:list[str]=[]):
     if not args:
-        print("[bold red]Specify at least one app to build/run[/bold red]")
-        return
+        args = [os.path.basename(os.getcwd())]
 
     for arg in args:
         path_direct = f"build/{arg}{execulableExtention}"
