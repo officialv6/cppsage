@@ -1,0 +1,10 @@
+#ifndef __demo__
+    #define __demo__
+#include <string_view>
+namespace Project {
+    constexpr std::string_view VERSION_STRING = "@demo_VERSION_MAJOR@.@demo_VERSION_MINOR@.@demo_VERSION_PATCH@";
+    constexpr std::string_view COMPANY_NAME = "@COMPANY@";
+    constexpr std::string_view COPYRIGHT_STRING = "@COPYRIGHT@";
+    constexpr std::string_view PROJECT_NAME = "@PROJECT_NAME@";
+}
+#endif
