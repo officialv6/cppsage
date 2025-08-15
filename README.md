@@ -1,10 +1,10 @@
 
 
-# Sage: The Unified C/C++ Orchestrator Version.6
+# Sage: The Unified C/C++ Orchestrator version.vi
 
 ---
 
-**Sage by [Version.6](https://github.com/versionvi) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
+**Sage by [version.vi](https://github.com/versionvi) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
 
 ---
 
@@ -96,11 +96,11 @@ Sage is open-source software licensed under the [MIT License](https://www.google
 ## 📞 Contact
 
 For questions, support, or general inquiries, please reach out to us:
-  * **GitHub Issues:** [https://github.com/Version.6/sage/issues](https://www.google.com/search?q=https://github.com/versionvi/sage/issues)
+  * **GitHub Issues:** [https://github.com/versionvi/sage/issues](https://www.google.com/search?q=https://github.com/versionvi/sage/issues)
 
 -----
 
-Made with ❤️ by the team at [Version.6](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/versionvi).
+Made with ❤️ by the team at [versionvi](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/versionvi).
 
 ```
 ```

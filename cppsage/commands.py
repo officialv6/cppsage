@@ -6,6 +6,10 @@ import sys
 import subprocess
 from typer import Option
 import questionary
+from importlib.metadata import version
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 packageFileName = "requirements.txt"
 preset = "clang-msvc" if os.name == "nt" else "clang-posix"
@@ -18,8 +22,17 @@ buildType="Release"
 def about():
     """Show information about the Sage project and CLI."""
 
-    print("[bold cyan]Sage by Version6[/bold cyan]: A unified build and dependency system for C/C++")
-    print("[faint white]Use '--help' to explore commands[/faint white]")
+    console = Console()
+    title = Text(f"Sage v{version("cppsage")}", style="bold cyan")
+    subtitle = Text("A unified build and dependency system for C/C++", style="white")
+    hint = Text("Use '--help' to explore commands", style="dim white")
+
+    console.print(Panel.fit(
+        Text.assemble(title, "\n", subtitle, "\n", hint),
+        border_style="cyan",
+        title="Version6",
+        subtitle="Sage CLI for C/C++"
+    ))
 
 def _change_directory(path: str):
     if path:
