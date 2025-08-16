@@ -1,10 +1,10 @@
 
 
-# Sage: The Unified C/C++ Orchestrator version.vi
+# Sage: The Unified C/C++ Orchestrator 6layer
 
 ---
 
-**Sage by [version.vi](https://github.com/versionvi) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
+**Sage by [6layer](https://github.com/6-layer) is the intelligent project and package manager that acts as the "missing piece" for modern C/C++ development. It elegantly unifies and orchestrates essential tools like CMake, Conan, Clang, and Ninja, bringing clarity, consistency, and control to your entire C/C++ workflow.**
 
 ---
 
@@ -58,7 +58,7 @@ For more in-depth information, detailed usage guides, and advanced configuration
 
 ## 🛠️ Project Structure
 
-The `versionvi/sage` repository contains:
+The `6-layer/sage` repository contains:
 
 ```
 .
@@ -85,7 +85,7 @@ Please refer to our [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTI
 
 ## 🐞 Reporting Issues
 
-Found a bug or have a feature request? Please open an issue on our [GitHub Issues page](https://www.google.com/search?q=https://github.com/versionvi/sage/issues).
+Found a bug or have a feature request? Please open an issue on our [GitHub Issues page](https://www.google.com/search?q=https://github.com/6-layer/sage/issues).
 
 ## 📄 License
 
@@ -96,11 +96,11 @@ Sage is open-source software licensed under the [MIT License](https://www.google
 ## 📞 Contact
 
 For questions, support, or general inquiries, please reach out to us:
-  * **GitHub Issues:** [https://github.com/versionvi/sage/issues](https://www.google.com/search?q=https://github.com/versionvi/sage/issues)
+  * **GitHub Issues:** [https://github.com/6-layer/sage/issues](https://www.google.com/search?q=https://github.com/6-layer/sage/issues)
 
 -----
 
-Made with ❤️ by the team at [versionvi](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/versionvi).
+Made with ❤️ by the team at [6-layer](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/6-layer).
 
 ```
 ```

@@ -30,7 +30,7 @@ def about():
     console.print(Panel.fit(
         Text.assemble(title, "\n", subtitle, "\n", hint),
         border_style="cyan",
-        title="Version6",
+        title="6layer",
         subtitle="Sage CLI for C/C++"
     ))
 

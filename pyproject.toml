@@ -1,7 +1,7 @@
 [project]
 name = "cppsage"
 version = "0.3.4"
-description = "Sage: A Unified Project and Package Management System for C/C++ by Version.6"
+description = "Sage: A Unified Project and Package Management System for C/C++ by 6layer"
 authors = [
   {name = "Vishal Ahirwar", email = "cvxxcv0091@gmail.com"}
 ]
@@ -14,7 +14,7 @@ dependencies = ["typer", "rich", "questionary"]
 packages = ["cppsage"]
 
 [project.urls]
-Homepage = "https://github.com/versionvi/cppsage"
+Homepage = "https://github.com/6-layer/cppsage"
 
 [project.scripts]
 sage = "cppsage.cli:main"
