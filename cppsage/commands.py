@@ -378,7 +378,7 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
             print(result.stderr)
             if result.returncode != 0:
                 print("[bold red]Conan installation failed.[/bold red]")
-                return
+                exit(0)
             return
         else:
             print("[bold red]Missing requirements.txt[/bold red]")
