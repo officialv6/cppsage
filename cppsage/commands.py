@@ -147,7 +147,7 @@ def doctor():
         }},
         "clang": {"version_cmd": ["clang", "--version"], "install": {
             "Windows": "winget install LLVM.LLVM",
-            "Linux": "sudo apt-get install clang",
+            "Linux": "sudo apt-get install clang clang-tools",
             "Darwin": "brew install llvm"
         }},
         "conan": {"version_cmd": ["conan", "--version"], "install": {
@@ -158,7 +158,7 @@ def doctor():
     }
 
     if os.name == "nt":
-        tools["msvc"] = {"version_cmd": ["vswhere", "-latest", "-property", "displayName"], "install": {
+        tools["msvc"] = {"version_cmd": ["C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe", "-latest", "-property", "displayName"], "install": {
             "Windows": "Install Visual Studio Build Tools: https://aka.ms/vs/17/release/vs_BuildTools.exe"
         }}
 
@@ -175,9 +175,9 @@ def doctor():
         try:
             result = subprocess.run(details["version_cmd"], capture_output=True, text=True, check=True, shell=True)
             version = result.stdout.strip().splitlines()[0]
-            print(f"[green]V {tool} found: {version}[/green]")
+            print(f"[green]→ {tool} found: {version}[/green]")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print(f"[bold red]X {tool} not found.[/bold red]")
+            print(f"[bold red]→ {tool} not found.[/bold red]")
             if current_os:
                 install_cmd = details["install"].get(current_os)
                 if install_cmd:
@@ -191,9 +191,9 @@ def doctor():
         print("failed to install conan")
     code=subprocess.run(["conan","profile","detect"],capture_output=True).returncode
     if code==0 or code==1:
-        print("default conan profile created!")
+        print("[green]→ default conan profile created[/green]")
     else:
-        print("error while creating conan profile!")
+        print("[bold red]→ error while creating conan profile[/bold red]")
         return
     conan_profile_path=subprocess.run(["conan","profile","path","default"],capture_output=True).stdout.strip()
     modifyConanProfile(conan_profile_path)
@@ -257,16 +257,15 @@ add_subdirectory({project_name})
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-option(STATIC_LINK "Enable static linking" ON)
-if(STATIC_LINK)
-  set(BUILD_SHARED_LIBS OFF)
+option(CRT_STATIC_LINK ON)
+message(STATUS "Static Link C Runtime ${{CRT_STATIC_LINK}}")
+if(CRT_STATIC_LINK)
   if (WIN32)
       set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   else()
       set(CMAKE_EXE_LINKER_FLAGS "${{CMAKE_EXE_LINKER_FLAGS}} -static")
   endif()
 else()
-  set(BUILD_SHARED_LIBS ON)
   if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
   endif()
@@ -284,9 +283,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         -Wshadow -Wold-style-cast
         -Wcast-align -Wnull-dereference
         -Wformat=2 -Wformat-security
-        -fstack-protector-strong
         -D_FORTIFY_SOURCE=2
-        -fno-common
         #-Werror
     )
 endif()
@@ -324,7 +321,7 @@ namespace Project {{
 
 
     # Other essential files
-    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${sourceDir}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"STATIC_LINK\": false,\n        \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"clang-posix-debug\",\n    \"inherits\": \"clang-posix\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"clang-msvc\",\n      \"inherits\": \"clang-posix\",\n\"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"clang-msvc-debug\",\n      \"inherits\": \"clang-msvc\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
+    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${sourceDir}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"BUILD_SHARED_LIBS\": false,\n   \"CRT_STATIC_LINK\": false,\n       \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"clang-posix-debug\",\n    \"inherits\": \"clang-posix\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"clang-msvc\",\n      \"inherits\": \"clang-posix\",\n\"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"clang-msvc-debug\",\n      \"inherits\": \"clang-msvc\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
     (root / "packages/requirements.txt").write_text("[requires]\n[generators]\nCMakeDeps\nCMakeToolchain\n")
     
 
