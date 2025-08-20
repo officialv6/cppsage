@@ -630,7 +630,7 @@ def modifyConanProfile(conan_profile_path: str):
 
     # Update global.conf (Linux/macOS only)
     if platform.system() in ("Linux", "Darwin"):
-        global_conf = os.path.expanduser("~/.conan/global.conf")
+        global_conf = os.path.expanduser("~/.conan2/global.conf")
         os.makedirs(os.path.dirname(global_conf), exist_ok=True)
 
         if os.path.isfile(global_conf):
