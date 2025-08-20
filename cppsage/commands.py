@@ -10,6 +10,7 @@ from importlib.metadata import version
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+import platform
 
 packageFileName = "requirements.txt"
 preset = "clang-msvc" if os.name == "nt" else "clang-posix"
@@ -591,35 +592,77 @@ def debug(path: str = typer.Option(None, "--path", "-p", help="Path to the proje
     onCompile()
 
 
-def modifyConanProfile(conan_profile_path:str):
+
+def modifyConanProfile(conan_profile_path: str):
+    #Update profile
     if not os.path.isfile(conan_profile_path):
-        print(f"{conan_profile_path} doesn't exist!")
-        return
-    with open(conan_profile_path, "r") as file:
-        file_data = file.readlines()
+        print(f"[WARN] {conan_profile_path} doesn't exist!")
+    else:
+        with open(conan_profile_path, "r") as file:
+            file_data = file.readlines()
 
-    # Set compiler.cppstd to 20
-    found_cppstd = False
-    for index, line in enumerate(file_data):
-        if line.strip().startswith("compiler.cppstd"):
-            file_data[index] = "compiler.cppstd=20\n"
-            found_cppstd = True
-            break
-    if not found_cppstd:
-        file_data.append("compiler.cppstd=20\n")
+        # compiler.cppstd=20
+        found_cppstd = False
+        for index, line in enumerate(file_data):
+            if line.strip().startswith("compiler.cppstd"):
+                if line.strip() != "compiler.cppstd=20":
+                    file_data[index] = "compiler.cppstd=20\n"
+                    print("[INFO] Updated compiler.cppstd=20")
+                found_cppstd = True
+                break
+        if not found_cppstd:
+            file_data.append("compiler.cppstd=20\n")
+            print("[INFO] Added compiler.cppstd=20")
 
-    # Add &:compiler=clang if not present
-    found_compiler = False
-    for line in file_data:
-        if line.strip() == "&:compiler=clang":
-            found_compiler = True
-            break
-    if not found_compiler:
-        file_data.append("&:compiler=clang\n")
+        # &:compiler=clang
+        found_compiler = False
+        for line in file_data:
+            if line.strip() == "&:compiler=clang":
+                found_compiler = True
+                break
+        if not found_compiler:
+            file_data.append("&:compiler=clang\n")
+            print("[INFO] Added &:compiler=clang")
 
-    with open(conan_profile_path, "w") as file:
-        file.writelines(file_data)
-    
+        with open(conan_profile_path, "w") as file:
+            file.writelines(file_data)
+        print(f"[OK] Updated profile: {conan_profile_path}")
+
+    # Update global.conf (Linux/macOS only)
+    if platform.system() in ("Linux", "Darwin"):
+        global_conf = os.path.expanduser("~/.conan/global.conf")
+        os.makedirs(os.path.dirname(global_conf), exist_ok=True)
+
+        if os.path.isfile(global_conf):
+            with open(global_conf, "r") as file:
+                global_data = file.readlines()
+        else:
+            global_data = []
+
+        pm_settings = {
+            "tools.system.package_manager:mode": "install",
+            "tools.system.package_manager:sudo": "True",
+        }
+
+        for key, value in pm_settings.items():
+            found = False
+            for index, line in enumerate(global_data):
+                if line.strip().startswith(key):
+                    if line.strip() != f"{key} = {value}":
+                        global_data[index] = f"{key} = {value}\n"
+                        print(f"[INFO] Updated {key} = {value}")
+                    found = True
+                    break
+            if not found:
+                global_data.append(f"{key} = {value}\n")
+                print(f"[INFO] Added {key} = {value}")
+
+        with open(global_conf, "w") as file:
+            file.writelines(global_data)
+        print(f"[OK] Updated global.conf: {global_conf}")
+    else:
+        print("[SKIP] global.conf update not required on Windows")
+ 
 def processConanLogAndFindPackageStr(result:str):
     find_packages=[]
     target_link:str=""
