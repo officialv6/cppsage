@@ -176,9 +176,9 @@ def doctor():
         try:
             result = subprocess.run(details["version_cmd"], capture_output=True, text=True, check=True, shell=True)
             version = result.stdout.strip().splitlines()[0]
-            print(f"[green]→ {tool} found: {version}[/green]")
+            print(f"[green]-> {tool} found: {version}[/green]")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print(f"[bold red]→ {tool} not found.[/bold red]")
+            print(f"[bold red]-> {tool} not found.[/bold red]")
             if current_os:
                 install_cmd = details["install"].get(current_os)
                 if install_cmd:
@@ -192,9 +192,9 @@ def doctor():
         print("failed to install conan")
     code=subprocess.run(["conan","profile","detect"],capture_output=True).returncode
     if code==0 or code==1:
-        print("[green]→ default conan profile created[/green]")
+        print("[green]-> default conan profile created[/green]")
     else:
-        print("[bold red]→ error while creating conan profile[/bold red]")
+        print("[bold red]-> error while creating conan profile[/bold red]")
         return
     conan_profile_path=subprocess.run(["conan","profile","path","default"],capture_output=True).stdout.strip()
     modifyConanProfile(conan_profile_path)
