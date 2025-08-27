@@ -31,7 +31,7 @@ def about():
     console.print(Panel.fit(
         Text.assemble(title, "\n", subtitle, "\n", hint),
         border_style="cyan",
-        title="6layer",
+        title="Version 6",
         subtitle="Sage CLI for C/C++"
     ))
 
@@ -175,7 +175,13 @@ def doctor():
     for tool, details in tools.items():
         try:
             result = subprocess.run(details["version_cmd"], capture_output=True, text=True, check=True, shell=True)
-            version = result.stdout.strip().splitlines()[0]
+            lines = result.stdout.strip().splitlines()
+            if lines:
+                version = lines[0]
+                print(f"[green]-> {tool} found: {version}[/green]")
+            else:
+                print(f"[bold red]-> {tool} not found or version not detected.[/bold red]")
+                continue
             print(f"[green]-> {tool} found: {version}[/green]")
         except (subprocess.CalledProcessError, FileNotFoundError):
             print(f"[bold red]-> {tool} not found.[/bold red]")
@@ -187,6 +193,7 @@ def doctor():
                     print(f"  Installation instructions not available for {current_os}")
             else:
                 print(f"  Installation instructions not available for your OS: {sys.platform}")
+
 
     if subprocess.run(["pip","install","conan"],capture_output=True).returncode!=0:
         print("failed to install conan")
@@ -216,19 +223,19 @@ def create():
 
     lang = questionary.select(
         "Choose language:",
-        choices=["c", "c++"],
+        choices=["C", "C++"],
     ).ask()
 
     project_type = questionary.select(
         "Choose project type:",
-        choices=["lib", "exe"],
+        choices=["Library", "Executable"],
     ).ask()
 
     if not lang or not project_type:
         raise typer.Exit()
 
 
-    ext = "c" if lang == "c" else "cpp"
+    ext = "c" if lang == "C" else "cpp"
     root = Path(project_name)
     print(f"[bold green]Scaffolding {lang.upper()} project: {project_name}[/bold green]")
 
@@ -306,7 +313,7 @@ namespace Project {{
     (root / f"config/{project_name}config.h.in").write_text(config_h)
 
     # Subproject CMakeLists.txt
-    if project_type == "exe":
+    if not project_type == "Library":
         subproject_cmake = f"""add_executable({project_name} src/main.{ext}) # Add your Source Files here
 #@add_target_link_libraries Warning: Do not remove this line
 """
@@ -501,7 +508,7 @@ def add():
 
     project_type = questionary.select(
         "Choose project type:",
-        choices=["lib", "exe"],
+        choices=["Library", "Executable"],
     ).ask()
     if not project_type:
         raise typer.Exit()
@@ -515,7 +522,7 @@ def add():
         Path(folder).mkdir(parents=True, exist_ok=True)
 
     # Subproject CMakeLists.txt
-    if project_type == "exe":
+    if not project_type == "Library":
         subproject_cmake = f"""add_executable({subproject_name} src/main.cpp) # Add your Source Files here
 #@add_target_link_libraries Warning: Do not remove this line
 """
