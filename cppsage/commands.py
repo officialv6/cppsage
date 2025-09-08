@@ -12,9 +12,8 @@ from rich.panel import Panel
 from rich.text import Text
 import platform
 
-packageFileName = "requirements.txt"
-preset = "clang-msvc" if os.name == "nt" else "clang-posix"
-debugPreset="clang-msvc-debug" if os.name=="nt" else "clang-posix-debug"
+packageFileName = "conanfile.py"
+debugPreset="debug"
 execulableExtention=".exe" if os.name =="nt" else ""
 app = typer.Typer(no_args_is_help=True)
 buildType="Release"
@@ -241,8 +240,8 @@ def create():
 
     # Create directory structure
     for folder in [
-         "config",
-        f"{project_name}/src", f"{project_name}/include", "packages"
+         "cmake",
+        f"{project_name}/src", f"{project_name}/include"
     ]:
         (root / folder).mkdir(parents=True, exist_ok=True)
 
@@ -250,8 +249,9 @@ def create():
     cmake_root = f"""#Auto Generated Root CMake file by Sage
 #Copyright(c) 2025 None.All rights reerved.
 cmake_minimum_required(VERSION 3.6...3.31)
+include(cmake/clang.toolchain.cmake)
 project({project_name} VERSION 0.1.0 LANGUAGES CXX C)
-include(config/config.cmake)
+include(cmake/config.cmake)
 #@add_find_package Warning: Do not remove this line
 
 #@add_subproject Warning: Do not remove this line
@@ -282,7 +282,7 @@ set(COMPANY "None")
 string(TIMESTAMP CURRENT_YEAR "%Y")
 set(COPYRIGHT "Copyright(c) ${{CURRENT_YEAR}} ${{COMPANY}}.")
 include_directories(${{CMAKE_BINARY_DIR}} ${{CMAKE_SOURCE_DIR}})
-configure_file(config/{project_name}config.h.in {project_name}config.h)
+configure_file(cmake/{project_name}config.h.in {project_name}config.h)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "Enabling secure coding features for Clang")
     add_compile_options(
@@ -291,13 +291,61 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         -Wshadow -Wold-style-cast
         -Wcast-align -Wnull-dereference
         -Wformat=2 -Wformat-security
-        -D_FORTIFY_SOURCE=2
+        # -D_FORTIFY_SOURCE=2
         #-Werror
     )
 endif()
 """
-    (root / "config/config.cmake").write_text(config_cmake)
+    (root / "cmake/config.cmake").write_text(config_cmake)
+    (root/"cmake/clang.toolchain.cmake").write_text("""if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+endif()
 
+# Show a message for clarity
+message(STATUS "Forcing Clang compiler")
+
+# Detect host system
+if(NOT DEFINED CMAKE_SYSTEM_NAME)
+    set(CMAKE_SYSTEM_NAME ${CMAKE_HOST_SYSTEM_NAME})
+endif()
+
+# Force Ninja generator if not already set
+if(NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
+    message(STATUS "Warning: CMake Generator: ${CMAKE_GENERATOR}, Use Ninja for faster builds")
+else()
+    message(STATUS "CMake Generator: ${CMAKE_GENERATOR}")
+endif()
+
+# Windows: use clang-cl
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    message(STATUS "Targeting Windows — using clang-cl")
+    # You can customize this path if needed
+    set(CMAKE_C_COMPILER "clang-cl" CACHE STRING "C compiler")
+    set(CMAKE_CXX_COMPILER "clang-cl" CACHE STRING "C++ compiler")
+
+    # Optional: specify MSVC-like flags
+    set(CMAKE_C_FLAGS "/nologo /EHsc" CACHE STRING "C flags")
+    set(CMAKE_CXX_FLAGS "/nologo /EHsc" CACHE STRING "C++ flags")
+
+# Android: use NDK toolchain
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+    message(STATUS "Targeting Android — using NDK Clang")
+
+    set(CMAKE_ANDROID_NDK "/path/to/ndk" CACHE PATH "Path to Android NDK")
+    set(CMAKE_SYSTEM_VERSION 21)
+    set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_ANDROID_NDK}/build/cmake/android.toolchain.cmake")
+
+# Linux/macOS: use regular clang
+else()
+    message(STATUS "Targeting Unix-like system — using clang/clang++")
+
+    set(CMAKE_C_COMPILER "clang" CACHE STRING "C compiler")
+    set(CMAKE_CXX_COMPILER "clang++" CACHE STRING "C++ compiler")
+endif()
+
+""")
     # res/config.h.in
     config_h = rf"""#ifndef __{project_name}__
     #define __{project_name}__
@@ -310,7 +358,7 @@ namespace Project {{
 }}
 #endif
 """
-    (root / f"config/{project_name}config.h.in").write_text(config_h)
+    (root / f"cmake/{project_name}config.h.in").write_text(config_h)
 
     # Subproject CMakeLists.txt
     if not project_type == "Library":
@@ -329,15 +377,109 @@ namespace Project {{
 
 
     # Other essential files
-    (root / "CMakePresets.json").write_text("\n{\n  \"version\": 3,\n  \"configurePresets\": [\n    {\n      \"name\": \"clang-posix\",\n      \"generator\": \"Ninja\",\n      \"binaryDir\": \"${sourceDir}/build/\",\n      \"cacheVariables\": {\n        \"CMAKE_TOOLCHAIN_FILE\": \"packages/install/conan_toolchain.cmake\",\n        \"BUILD_SHARED_LIBS\": false,\n   \"CRT_STATIC_LINK\": false,\n       \"CMAKE_BUILD_TYPE\":\"Release\",\n        \"CMAKE_CXX_COMPILER\":\"clang++\",\n        \"CMAKE_C_COMPILER\":\"clang\"\n      }\n    },\n    {\"name\": \"clang-posix-debug\",\n    \"inherits\": \"clang-posix\",\n    \"cacheVariables\": {\n      \"CMAKE_BUILD_TYPE\":\"Debug\"\n    }\n    },\n    {\n      \"name\": \"clang-msvc\",\n      \"inherits\": \"clang-posix\",\n\"cacheVariables\": {\n        \"CMAKE_CXX_COMPILER\":\"clang-cl\",\n        \"CMAKE_C_COMPILER\":\"clang-cl\"\n      }\n    },\n    {\n      \"name\": \"clang-msvc-debug\",\n      \"inherits\": \"clang-msvc\",\n      \"cacheVariables\": {\n        \"CMAKE_BUILD_TYPE\":\"Debug\"\n      }\n    }\n  ]\n}")
-    (root / "packages/requirements.txt").write_text("[requires]\n[generators]\nCMakeDeps\nCMakeToolchain\n")
+    (root / "CMakePresets.json").write_text("""{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Configure for Debug builds. Requires running 'conan install . -of .install -s build_type=Debug' for Debug first.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/.build/Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/.install/build/Debug/generators/conan_toolchain.cmake"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Configure for Release builds. Requires running 'conan install . -of .install -s build_type=Debug' for Release first.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/.build/Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/.install/build/Release/generators/conan_toolchain.cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    }
+  ]
+}
+""")
     
+    (root/"conanfile.py").write_text("""from conan import ConanFile
+from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
+    
+class ProjectConan(ConanFile):
+    name = "undefined" # The package name should be the library's name
+    version = "0.1.0"
+    settings = "os", "compiler", "build_type", "arch"
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "build_app": [True, False]
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "build_app": False
+    }
+    # Make sure to export ALL necessary source code.
+    exports_sources = "CMakeLists.txt", "libs/*","cmake/*"
+    
+    def requirements(self):
+        #self.requires("Libname/version")
+        if self.options.build_app:  # Only for the app
+            pass
+        else: # Only for the libs
+            pass
+    def layout(self):
+        cmake_layout(self)
 
+    def generate(self):
+        deps = CMakeDeps(self)
+        deps.generate()
+        tc = CMakeToolchain(self)
+        #NOTE: This is if you want to publish apps with libs too
+        tc.variables["BUILD_APPLICATION"] = self.options.build_app
+        tc.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        pass
+        # This package only exposes information about the library.
+        #self.cpp_info.libs = ["undefined"] #Only if you have single lib if you component then
+        # # Define the "yourlib" library component
+        # self.cpp_info.components["yourlib"].libs = ["yourlib"]
+        # self.cpp_info.components["yourlib"].requires = ["fmt::fmt"] # Example if generator depends on fmt""")
+    
     for name, content in {
         ".clang-format": "BasedOnStyle: Google",
-        ".clangd": "CompileFlags:\n CompilationDatabase: build\n",
+        ".clangd": "CompileFlags:\n CompilationDatabase: .build/Debug\n",
         ".editorconfig": "root = true",
-        ".gitignore": "build/\npackages/install/\n.vscode/\n.vs\n.idea",
+        ".gitignore": "build/\npackages/install/\n.vscode/\n.vs\n.idea\n.install\n.build\n",
     }.items():
         (root / name).write_text(content)
 
@@ -370,15 +512,16 @@ def _process_conan_output(output: str):
     return find_packages, target_link_libraries
 
 def runInstall(package:str=None,version:str=None,build_type:str="Release"):
-    req_path = f"packages/{packageFileName}"
+    req_path = f"conanfile.py"
     result = None
-
+    commands=["conan", "install",".", "--output-folder", ".install", "--build=missing",
+                                   "-c","tools.cmake.cmaketoolchain:generator=Ninja",
+                                   "-s",f"build_type={build_type}","-o","&:build_app=True","-c","tools.cmake.cmaketoolchain:user_presets="]
+    
     if not package:
         if os.path.isfile(req_path):
             print("[bold yellow]Installing dependencies from requirements.txt[/bold yellow]")
-            result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing",
-                                   "-c","tools.cmake.cmaketoolchain:generator=Ninja",
-                                   "-s",f"build_type={build_type}"], capture_output=True, text=True)
+            result = subprocess.run(commands, capture_output=True, text=True)
             print(result.stdout)
             print(result.stderr)
             if result.returncode != 0:
@@ -427,7 +570,7 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
                 print(f"[bold yellow]{full_package} is already listed[/bold yellow]")
 
 
-        result = subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing","-c","tools.cmake.cmaketoolchain:generator=Ninja","-s",f"build_type={build_type}"], capture_output=True, text=True)
+        result = subprocess.run(commands, capture_output=True, text=True)
         print(result.stdout)
         print(result.stderr)
         if result.returncode != 0:
@@ -558,7 +701,7 @@ def onCompile():
     
     build_dir = f"build"
     if not os.path.isdir(build_dir):
-        runInstall()
+        runInstall(None,None,build_type="Debug")
         result = subprocess.run(["cmake", "--preset", preset])
         if result.returncode != 0:
             print("[bold red]CMake configuration failed[/bold red]")
@@ -588,11 +731,9 @@ def debug(path: str = typer.Option(None, "--path", "-p", help="Path to the proje
     buildType="Debug"
     global preset
     preset=debugPreset
-    req_path = f"packages/{packageFileName}"
+    req_path = f"{packageFileName}"
     if os.path.isfile(req_path):
-        subprocess.run(["conan", "install", req_path, "--output-folder", "packages/install", "--build=missing",
-                       "-c","tools.cmake.cmaketoolchain:generator=Ninja",
-                       "-s",f"build_type={buildType}"])
+        runInstall()
     else:
         print(f"[bold red]Missing {req_path}[/bold red]")
         return
