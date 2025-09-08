@@ -695,6 +695,7 @@ def add():
 
 
 def onCompile():
+    global preset
     if not os.path.isfile("CMakeLists.txt"):
         print("[bold red]Missing CMakeLists.txt[/bold red]")
         return
@@ -707,7 +708,7 @@ def onCompile():
             print("[bold red]CMake configuration failed[/bold red]")
             return
     
-    subprocess.run(["cmake", "--build", build_dir, "--parallel"])
+    subprocess.run(["cmake", "--build", "--preset",f"{preset}", "--parallel"])
 
 def onRun(args:list[str]=[]):
     if not args:
