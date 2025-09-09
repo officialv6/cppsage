@@ -612,8 +612,8 @@ class ProjectConan(ConanFile):
 
             if full_package + "\n" not in lines:
                 for i, line in enumerate(lines):
-                    if line.strip() == "[requires]":
-                        lines.insert(i + 1, full_package + "\n")
+                    if line.strip() == """#self.requires("Libname/version")""":
+                        lines.insert(i + 1, rf'        self.requires("{full_package}")' + "\n")
                         break
                 with open(req_path, "w") as f:
                     f.writelines(lines)
