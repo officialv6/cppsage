@@ -174,7 +174,7 @@ def doctor():
 
     for tool, details in tools.items():
         try:
-            result = subprocess.run(details["version_cmd"], capture_output=True, text=True, check=True, shell=True)
+            result = subprocess.run(details["version_cmd"], capture_output=True, text=True)
             lines = result.stdout.strip().splitlines()
             if lines:
                 version = lines[0]
@@ -182,7 +182,7 @@ def doctor():
             else:
                 print(f"[bold red]-> {tool} not found or version not detected.[/bold red]")
                 continue
-            print(f"[green]-> {tool} found: {version}[/green]")
+
         except (subprocess.CalledProcessError, FileNotFoundError):
             print(f"[bold red]-> {tool} not found.[/bold red]")
             if current_os:
@@ -821,9 +821,19 @@ def modifyConanProfile(conan_profile_path: str):
                 found_compiler = True
                 break
         if not found_compiler:
-            file_data.append("&:compiler=clang\n")
-            print("[INFO] Added &:compiler=clang")
+            try:
+                result=subprocess.run(["clang","--version"],capture_output=True,text=True)
+                clangVersion=result.stdout.splitlines()[0].split()[2].split(sep=".")[0]
+                file_data.append("&:compiler=clang\n")
+                file_data.append(f"&:compiler.version={clangVersion}")#TODO Fix ithis
+                print("[INFO] Added &:compiler=clang")
+                print(f"[INFO] Added &:compiler.version={clangVersion}\n")
 
+            except ...:
+                print(f"Error failed to fetch clang version, make sure you have clang installed and in path")
+                print("After installing clang run sage doctor again!")
+                print(f"[!OK] Updated profile: {conan_profile_path}")
+                return
         with open(conan_profile_path, "w") as file:
             file.writelines(file_data)
         print(f"[OK] Updated profile: {conan_profile_path}")
