@@ -822,8 +822,25 @@ def modifyConanProfile(conan_profile_path: str):
                 break
         if not found_compiler:
             try:
-                result=subprocess.run(["clang","--version"],capture_output=True,text=True)
-                clangVersion=result.stdout.splitlines()[0].split()[2].split(sep=".")[0]
+                result = subprocess.run(["clang", "--version"], capture_output=True, text=True, check=True)
+                
+                # 2. Define a regex pattern to find the version string
+                # This pattern looks for the word "version" followed by a space,
+                # and then captures a sequence of numbers separated by dots (e.g., 20.1.8)
+                pattern = r"version (\d+(\.\d+)*)"
+                
+                # 3. Search for the pattern in the first line of the output
+                match = re.search(pattern, result.stdout.splitlines()[0])
+                
+                # 4. Extract the version if a match is found
+                if match:
+                    full_version_string = match.group(1)  # group(1) captures the part in the first parenthesis
+                    # full_version_string will be something like "20.1.8"
+                    
+                    clangVersion = full_version_string.split('.')[0] # Get the major version "20"
+                else:
+                    print("[!OK]Could not get compiler version!")
+                    return
                 file_data.append("&:compiler=clang\n")
                 file_data.append(f"&:compiler.version={clangVersion}")#TODO Fix ithis
                 print("[INFO] Added &:compiler=clang")
