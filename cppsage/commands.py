@@ -13,6 +13,7 @@ from rich.text import Text
 import platform
 
 packageFileName = "conanfile.py"
+preset="release"
 debugPreset="debug"
 execulableExtention=".exe" if os.name =="nt" else ""
 app = typer.Typer(no_args_is_help=True)
@@ -532,12 +533,62 @@ def runInstall(package:str=None,version:str=None,build_type:str="Release"):
             print("[bold red]Missing requirements.txt[/bold red]")
             return
     else:
-        req_dir=os.path.dirname(req_path)
-        os.makedirs(req_dir,exist_ok=True)
 
         if not os.path.isfile(req_path):
             with open(req_path, "w") as f:
-                f.write("[requires]\n[generators]\nCMakeDeps\nCMakeToolchain\n")
+                f.write("""from conan import ConanFile
+from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
+    
+class ProjectConan(ConanFile):
+    name = "undefined" # The package name should be the library's name
+    version = "0.1.0"
+    settings = "os", "compiler", "build_type", "arch"
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "build_app": [True, False]
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "build_app": False
+    }
+    # Make sure to export ALL necessary source code.
+    exports_sources = "CMakeLists.txt", "libs/*","cmake/*"
+    
+    def requirements(self):
+        #self.requires("Libname/version")
+        if self.options.build_app:  # Only for the app
+            pass
+        else: # Only for the libs
+            pass
+    def layout(self):
+        cmake_layout(self)
+
+    def generate(self):
+        deps = CMakeDeps(self)
+        deps.generate()
+        tc = CMakeToolchain(self)
+        #NOTE: This is if you want to publish apps with libs too
+        tc.variables["BUILD_APPLICATION"] = self.options.build_app
+        tc.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        pass
+        # This package only exposes information about the library.
+        #self.cpp_info.libs = ["undefined"] #Only if you have single lib if you component then
+        # # Define the "yourlib" library component
+        # self.cpp_info.components["yourlib"].libs = ["yourlib"]
+        # self.cpp_info.components["yourlib"].requires = ["fmt::fmt"] # Example if generator depends on fmt""")
 
         if not version:
             print(f"[bold green]No version provided for {package}. Fetching latest...[/bold green]")
@@ -700,9 +751,9 @@ def onCompile():
         print("[bold red]Missing CMakeLists.txt[/bold red]")
         return
     
-    build_dir = f"build"
+    build_dir = f".build/{buildType}"
     if not os.path.isdir(build_dir):
-        runInstall(None,None,build_type="Debug")
+        runInstall(None,None,build_type=buildType)
         result = subprocess.run(["cmake", "--preset", preset])
         if result.returncode != 0:
             print("[bold red]CMake configuration failed[/bold red]")
@@ -715,8 +766,8 @@ def onRun(args:list[str]=[]):
         args = [os.path.basename(os.getcwd())]
 
     for arg in args:
-        path_direct = f"build/{arg}{execulableExtention}"
-        path_nested = (f"build/{arg}/{arg}{execulableExtention}")
+        path_direct = f".build/{buildType}/{arg}{execulableExtention}"
+        path_nested = (f".build/{buildType}/{arg}/{arg}{execulableExtention}")
         if os.path.isfile(path_direct):
             subprocess.run([path_direct])
         elif os.path.isfile(path_nested):
